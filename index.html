@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hex Board Playground</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Hex Board Playground</h1>
+      <div id="controls">
+        <div class="control-group">
+          <label for="size-input">Board size:</label>
+          <input type="number" id="size-input" min="2" max="19" value="11" />
+          <button id="apply-btn">Apply</button>
+        </div>
+        <div class="control-group" id="symmetry-group">
+          <label class="checkbox-label" id="symmetry-label">
+            <input type="checkbox" id="symmetry-toggle" checked />
+            Double symmetry
+          </label>
+          <span id="symmetry-hint">(odd boards only)</span>
+        </div>
+        <div class="control-group">
+          <button id="clear-btn">Clear board</button>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div id="board-container">
+        <svg id="hex-board" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <div id="legend">
+        <div class="legend-item">
+          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#e05555" stroke="#c03030" stroke-width="1.5"/></svg>
+          <span>Red (placed)</span>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#4a90d9" stroke="#2a6ab9" stroke-width="1.5"/></svg>
+          <span>Blue (symmetric)</span>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#555" stroke="#888" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+          <span>Diagonal (locked)</span>
+        </div>
+      </div>
+      <p id="info-text"></p>
+    </main>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
