@@ -1,5 +1,12 @@
 export type CellColor = 'empty' | 'red' | 'blue' | 'disabled';
 
+export interface BoardState {
+  version: number;
+  size: number;
+  symmetry: boolean;
+  cells: Array<[number, number, 'red' | 'blue']>;
+}
+
 interface SymmetryGroup {
   // (r,c) → red, (c,r) → blue, (n-1-c, n-1-r) → blue, (n-1-r, n-1-c) → red
   entries: Array<{ row: number; col: number; color: 'red' | 'blue' }>;
@@ -85,6 +92,7 @@ export class HexBoard {
   private grid: CellColor[][];
   private svg: SVGSVGElement;
   private cellElements: Map<string, SVGGElement> = new Map();
+  onChange: (() => void) | null = null;
 
   constructor(svg: SVGSVGElement, n: number, symmetryOn: boolean) {
     this.svg = svg;
@@ -92,6 +100,33 @@ export class HexBoard {
     this.symmetryOn = symmetryOn;
     this.grid = this.makeGrid();
     this.render();
+  }
+
+  getState(): BoardState {
+    const cells: Array<[number, number, 'red' | 'blue']> = [];
+    for (let r = 0; r < this.n; r++) {
+      for (let c = 0; c < this.n; c++) {
+        const color = this.grid[r][c];
+        if (color === 'red' || color === 'blue') {
+          cells.push([r, c, color]);
+        }
+      }
+    }
+    return { version: 1, size: this.n, symmetry: this.symmetryOn, cells };
+  }
+
+  loadState(state: BoardState): { size: number; symmetry: boolean } {
+    const n = Math.max(2, Math.min(19, state.size));
+    this.n = n;
+    this.symmetryOn = state.symmetry;
+    this.grid = this.makeGrid();
+    for (const [r, c, color] of state.cells) {
+      if (r >= 0 && r < n && c >= 0 && c < n) {
+        this.grid[r][c] = color;
+      }
+    }
+    this.render();
+    return { size: this.n, symmetry: this.symmetryOn };
   }
 
   private makeGrid(): CellColor[][] {
@@ -107,17 +142,20 @@ export class HexBoard {
     this.symmetryOn = symmetryOn;
     this.grid = this.makeGrid();
     this.render();
+    this.onChange?.();
   }
 
   setSymmetry(on: boolean) {
     this.symmetryOn = on;
     this.grid = this.makeGrid();
     this.render();
+    this.onChange?.();
   }
 
   clear() {
     this.grid = this.makeGrid();
     this.updateAllCells();
+    this.onChange?.();
   }
 
   private key(r: number, c: number): string {
@@ -293,20 +331,18 @@ export class HexBoard {
 
   private handleSymmetricClick(r: number, c: number) {
     const group = symmetryGroup(r, c, this.n);
-
-    // If any cell in the group is colored, clear the whole group
     const anyColored = group.entries.some(e => this.grid[e.row][e.col] !== 'empty');
-
     for (const entry of group.entries) {
       this.grid[entry.row][entry.col] = anyColored ? 'empty' : entry.color;
       this.updateCell(entry.row, entry.col);
     }
+    this.onChange?.();
   }
 
   private handleFreeClick(r: number, c: number) {
-    // Cycle: empty → red → blue → empty
     const cur = this.grid[r][c];
     this.grid[r][c] = cur === 'empty' ? 'red' : cur === 'red' ? 'blue' : 'empty';
     this.updateCell(r, c);
+    this.onChange?.();
   }
 }

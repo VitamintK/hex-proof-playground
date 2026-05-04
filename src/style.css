@@ -188,4 +188,10 @@ main {
   font-size: 0.85rem;
   color: var(--text-dim);
   min-height: 1.2em;
+  word-break: break-all;
+}
+
+.control-group.separator {
+  border-left: 1px solid var(--border);
+  padding-left: 16px;
 }
