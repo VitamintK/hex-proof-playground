@@ -82,7 +82,8 @@ function symmetryGroup(r: number, c: number, n: number, brush: BrushColor): Symm
 }
 
 function cellColorFill(color: CellColor, disabled: boolean): { fill: string; stroke: string; strokeDash: string } {
-  if (disabled) return { fill: '#1e1e32', stroke: '#2e2e4e', strokeDash: '4,3' };
+  // Disabled appearance only for unpainted axis cells; painted colors always show through.
+  if (disabled && color === 'empty') return { fill: '#1e1e32', stroke: '#2e2e4e', strokeDash: '4,3' };
   switch (color) {
     case 'red':   return { fill: '#e05555', stroke: '#c03030', strokeDash: '' };
     case 'blue':  return { fill: '#4a90d9', stroke: '#2a6ab9', strokeDash: '' };
@@ -116,7 +117,30 @@ export class HexBoard {
     this.attachPointerListeners();
   }
 
-  setBrush(color: BrushColor) { this.brush = color; }
+  setBrush(color: BrushColor) {
+    this.brush = color;
+    this.refreshAxisCells();
+  }
+
+  // True when the cell should present as disabled (axis cell + non-white brush).
+  private isEffectivelyDisabled(r: number, c: number): boolean {
+    return isCellDisabled(r, c, this.n, this.symmetryOn) && this.brush !== 'white';
+  }
+
+  // Sync the .disabled CSS class and polygon style of every axis cell to the current brush.
+  private refreshAxisCells() {
+    for (let r = 0; r < this.n; r++) {
+      for (let c = 0; c < this.n; c++) {
+        if (!isCellDisabled(r, c, this.n, this.symmetryOn)) continue;
+        const g = this.cellElements.get(this.key(r, c));
+        if (!g) continue;
+        const disabled = this.isEffectivelyDisabled(r, c);
+        g.classList.toggle('disabled', disabled);
+        const poly = g.querySelector('polygon') as SVGPolygonElement | null;
+        if (poly) this.applyCellStyle(poly, this.grid[r][c], disabled);
+      }
+    }
+  }
 
   getState(): BoardState {
     const cells: Array<[number, number, BrushColor]> = [];
@@ -347,7 +371,7 @@ export class HexBoard {
   private renderCell(r: number, c: number) {
     const size = this.hexSize;
     const { cx, cy } = cellCenter(r, c, size);
-    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
+    const disabled = this.isEffectivelyDisabled(r, c);
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.setAttribute('class', `hex-cell${disabled ? ' disabled' : ''}`);
@@ -377,7 +401,7 @@ export class HexBoard {
     if (!g) return;
     const poly = g.querySelector('polygon') as SVGPolygonElement | null;
     if (!poly) return;
-    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
+    const disabled = this.isEffectivelyDisabled(r, c);
     this.applyCellStyle(poly, this.grid[r][c], disabled);
   }
 
