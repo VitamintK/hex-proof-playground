@@ -13,8 +13,19 @@
       <div id="controls">
         <div class="control-group">
           <label for="size-input">Board size:</label>
-          <input type="number" id="size-input" min="2" max="19" value="11" />
+          <input type="number" id="size-input" min="2" max="41" value="11" />
           <button id="apply-btn">Apply</button>
+        </div>
+        <div class="control-group">
+          <span class="control-label">Brush:</span>
+          <div id="brush-picker">
+            <button id="brush-red" class="brush-btn active" data-color="red" title="Red brush">
+              <span class="brush-swatch red"></span> Red
+            </button>
+            <button id="brush-blue" class="brush-btn" data-color="blue" title="Blue brush">
+              <span class="brush-swatch blue"></span> Blue
+            </button>
+          </div>
         </div>
         <div class="control-group" id="symmetry-group">
           <label class="checkbox-label" id="symmetry-label">

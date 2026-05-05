@@ -195,3 +195,41 @@ main {
   border-left: 1px solid var(--border);
   padding-left: 16px;
 }
+
+.control-label {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+#brush-picker {
+  display: flex;
+  gap: 4px;
+}
+
+.brush-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+}
+
+.brush-btn.active {
+  border-color: var(--text);
+  background: var(--surface);
+}
+
+.brush-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.brush-swatch.red  { background: #e05555; }
+.brush-swatch.blue { background: #4a90d9; }
+
+/* Prevent text selection and default touch actions while drawing */
+#hex-board {
+  touch-action: none;
+  user-select: none;
+}
