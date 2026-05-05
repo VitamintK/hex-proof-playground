@@ -225,8 +225,9 @@ main {
   border-radius: 50%;
 }
 
-.brush-swatch.red  { background: #e05555; }
-.brush-swatch.blue { background: #4a90d9; }
+.brush-swatch.red   { background: #e05555; }
+.brush-swatch.blue  { background: #4a90d9; }
+.brush-swatch.white { background: #f0f0f0; border: 1px solid #888; }
 
 /* Prevent text selection and default touch actions while drawing */
 #hex-board {

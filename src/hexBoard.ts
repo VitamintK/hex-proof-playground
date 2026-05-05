@@ -1,15 +1,15 @@
-export type CellColor = 'empty' | 'red' | 'blue';
-export type BrushColor = 'red' | 'blue';
+export type CellColor = 'empty' | 'red' | 'blue' | 'white';
+export type BrushColor = 'red' | 'blue' | 'white';
 
 export interface BoardState {
   version: number;
   size: number;
   symmetry: boolean;
-  cells: Array<[number, number, 'red' | 'blue']>;
+  cells: Array<[number, number, BrushColor]>;
 }
 
 interface SymmetryGroup {
-  entries: Array<{ row: number; col: number; color: 'red' | 'blue' }>;
+  entries: Array<{ row: number; col: number; color: BrushColor }>;
 }
 
 const MAX_HEX_SIZE = 22;
@@ -54,18 +54,18 @@ function svgSize(n: number, size: number): { width: number; height: number } {
   };
 }
 
-// Returns true if the cell is on a symmetry axis (main or anti diagonal) for odd-sized boards.
-function isOnSymmetryLine(r: number, c: number, n: number, symmetryOn: boolean): boolean {
+function isCellDisabled(r: number, c: number, n: number, symmetryOn: boolean): boolean {
   if (!symmetryOn || n % 2 === 0) return false;
   return r === c || r + c === n - 1;
 }
 
 function symmetryGroup(r: number, c: number, n: number, brush: BrushColor): SymmetryGroup {
-  const other: BrushColor = brush === 'red' ? 'blue' : 'red';
+  // White is its own opposite; red and blue swap.
+  const other: BrushColor = brush === 'red' ? 'blue' : brush === 'blue' ? 'red' : 'white';
   const seen = new Set<string>();
   const entries: SymmetryGroup['entries'] = [];
 
-  function add(row: number, col: number, color: 'red' | 'blue') {
+  function add(row: number, col: number, color: BrushColor) {
     const key = `${row},${col}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -81,10 +81,12 @@ function symmetryGroup(r: number, c: number, n: number, brush: BrushColor): Symm
   return { entries };
 }
 
-function cellColorFill(color: CellColor): { fill: string; stroke: string; strokeDash: string } {
+function cellColorFill(color: CellColor, disabled: boolean): { fill: string; stroke: string; strokeDash: string } {
+  if (disabled) return { fill: '#1e1e32', stroke: '#2e2e4e', strokeDash: '4,3' };
   switch (color) {
     case 'red':   return { fill: '#e05555', stroke: '#c03030', strokeDash: '' };
     case 'blue':  return { fill: '#4a90d9', stroke: '#2a6ab9', strokeDash: '' };
+    case 'white': return { fill: '#f0f0f0', stroke: '#888888', strokeDash: '' };
     default:      return { fill: '#2a2a4a', stroke: '#3a3a6a', strokeDash: '' };
   }
 }
@@ -117,7 +119,7 @@ export class HexBoard {
   setBrush(color: BrushColor) { this.brush = color; }
 
   getState(): BoardState {
-    const cells: Array<[number, number, 'red' | 'blue']> = [];
+    const cells: Array<[number, number, BrushColor]> = [];
     for (let r = 0; r < this.n; r++) {
       for (let c = 0; c < this.n; c++) {
         const color = this.grid[r][c];
@@ -213,11 +215,13 @@ export class HexBoard {
   }
 
   private applyBrushToCell(r: number, c: number) {
-    const useSymmetry = this.symmetryOn && this.n % 2 !== 0;
-    const onAxis = isOnSymmetryLine(r, c, this.n, this.symmetryOn);
+    // Axis cells are blocked for red/blue; white may paint anywhere.
+    if (this.brush !== 'white' && isCellDisabled(r, c, this.n, this.symmetryOn)) return;
 
-    if (useSymmetry && !onAxis) {
-      // Symmetry group painting for off-axis cells
+    const useSymmetry = this.symmetryOn && this.n % 2 !== 0;
+
+    if (useSymmetry) {
+      // Use any cell in the group as the visit key to avoid double-triggering
       const group = symmetryGroup(r, c, this.n, this.brush);
       const groupKey = group.entries.map(e => this.key(e.row, e.col)).sort().join('|');
       if (this.visitedInDrag.has(groupKey)) return;
@@ -239,7 +243,6 @@ export class HexBoard {
         }
       }
     } else {
-      // Single-cell painting: off-axis without symmetry, or any cell on a symmetry axis
       const cellKey = this.key(r, c);
       if (this.visitedInDrag.has(cellKey)) return;
       this.visitedInDrag.add(cellKey);
@@ -344,23 +347,24 @@ export class HexBoard {
   private renderCell(r: number, c: number) {
     const size = this.hexSize;
     const { cx, cy } = cellCenter(r, c, size);
+    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'hex-cell');
+    g.setAttribute('class', `hex-cell${disabled ? ' disabled' : ''}`);
     g.setAttribute('data-row', String(r));
     g.setAttribute('data-col', String(c));
 
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
     poly.setAttribute('points', hexVertices(cx, cy, size - Math.max(1, size * 0.07)));
-    this.applyCellStyle(poly, this.grid[r][c]);
+    this.applyCellStyle(poly, this.grid[r][c], disabled);
 
     g.appendChild(poly);
     this.svg.appendChild(g);
     this.cellElements.set(this.key(r, c), g);
   }
 
-  private applyCellStyle(poly: SVGPolygonElement, color: CellColor) {
-    const { fill, stroke, strokeDash } = cellColorFill(color);
+  private applyCellStyle(poly: SVGPolygonElement, color: CellColor, disabled: boolean) {
+    const { fill, stroke, strokeDash } = cellColorFill(color, disabled);
     poly.setAttribute('fill', fill);
     poly.setAttribute('stroke', stroke);
     poly.setAttribute('stroke-width', String(Math.max(0.8, this.hexSize * 0.07)));
@@ -373,7 +377,8 @@ export class HexBoard {
     if (!g) return;
     const poly = g.querySelector('polygon') as SVGPolygonElement | null;
     if (!poly) return;
-    this.applyCellStyle(poly, this.grid[r][c]);
+    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
+    this.applyCellStyle(poly, this.grid[r][c], disabled);
   }
 
   private updateAllCells() {
