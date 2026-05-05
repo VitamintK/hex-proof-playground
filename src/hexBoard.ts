@@ -16,8 +16,8 @@ const MAX_HEX_SIZE = 22;
 const MIN_HEX_SIZE = 5;
 const PADDING = 40;
 // Target viewport the board should fit within
-const MAX_BOARD_WIDTH  = 900;
-const MAX_BOARD_HEIGHT = 800;
+const MAX_BOARD_WIDTH  = 1200;
+const MAX_BOARD_HEIGHT = 950;
 
 function computeHexSize(n: number): number {
   const wFactor = Math.sqrt(3) * (1.5 * (n - 1) + 1);
