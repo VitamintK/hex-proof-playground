@@ -1,4 +1,4 @@
-export type CellColor = 'empty' | 'red' | 'blue' | 'disabled';
+export type CellColor = 'empty' | 'red' | 'blue';
 export type BrushColor = 'red' | 'blue';
 
 export interface BoardState {
@@ -12,8 +12,20 @@ interface SymmetryGroup {
   entries: Array<{ row: number; col: number; color: 'red' | 'blue' }>;
 }
 
-const HEX_SIZE = 22;
+const MAX_HEX_SIZE = 22;
+const MIN_HEX_SIZE = 5;
 const PADDING = 40;
+// Target viewport the board should fit within
+const MAX_BOARD_WIDTH  = 900;
+const MAX_BOARD_HEIGHT = 800;
+
+function computeHexSize(n: number): number {
+  const wFactor = Math.sqrt(3) * (1.5 * (n - 1) + 1);
+  const hFactor = 2 * (0.75 * (n - 1) + 1);
+  const fromWidth  = (MAX_BOARD_WIDTH  - 2 * PADDING) / wFactor;
+  const fromHeight = (MAX_BOARD_HEIGHT - 2 * PADDING) / hFactor;
+  return Math.min(MAX_HEX_SIZE, Math.max(MIN_HEX_SIZE, Math.floor(Math.min(fromWidth, fromHeight))));
+}
 
 function hexVertices(cx: number, cy: number, size: number): string {
   const pts: string[] = [];
@@ -42,7 +54,8 @@ function svgSize(n: number, size: number): { width: number; height: number } {
   };
 }
 
-function isCellDisabled(r: number, c: number, n: number, symmetryOn: boolean): boolean {
+// Returns true if the cell is on a symmetry axis (main or anti diagonal) for odd-sized boards.
+function isOnSymmetryLine(r: number, c: number, n: number, symmetryOn: boolean): boolean {
   if (!symmetryOn || n % 2 === 0) return false;
   return r === c || r + c === n - 1;
 }
@@ -68,8 +81,7 @@ function symmetryGroup(r: number, c: number, n: number, brush: BrushColor): Symm
   return { entries };
 }
 
-function cellColorFill(color: CellColor, disabled: boolean): { fill: string; stroke: string; strokeDash: string } {
-  if (disabled) return { fill: '#1e1e32', stroke: '#2e2e4e', strokeDash: '4,3' };
+function cellColorFill(color: CellColor): { fill: string; stroke: string; strokeDash: string } {
   switch (color) {
     case 'red':   return { fill: '#e05555', stroke: '#c03030', strokeDash: '' };
     case 'blue':  return { fill: '#4a90d9', stroke: '#2a6ab9', strokeDash: '' };
@@ -84,6 +96,7 @@ export class HexBoard {
   private grid: CellColor[][];
   private svg: SVGSVGElement;
   private cellElements: Map<string, SVGGElement> = new Map();
+  private hexSize: number = MAX_HEX_SIZE;
 
   // drag state
   private dragging = false;
@@ -200,12 +213,11 @@ export class HexBoard {
   }
 
   private applyBrushToCell(r: number, c: number) {
-    if (isCellDisabled(r, c, this.n, this.symmetryOn)) return;
-
     const useSymmetry = this.symmetryOn && this.n % 2 !== 0;
+    const onAxis = isOnSymmetryLine(r, c, this.n, this.symmetryOn);
 
-    if (useSymmetry) {
-      // Use any cell in the group as the visit key to avoid double-triggering
+    if (useSymmetry && !onAxis) {
+      // Symmetry group painting for off-axis cells
       const group = symmetryGroup(r, c, this.n, this.brush);
       const groupKey = group.entries.map(e => this.key(e.row, e.col)).sort().join('|');
       if (this.visitedInDrag.has(groupKey)) return;
@@ -227,6 +239,7 @@ export class HexBoard {
         }
       }
     } else {
+      // Single-cell painting: off-axis without symmetry, or any cell on a symmetry axis
       const cellKey = this.key(r, c);
       if (this.visitedInDrag.has(cellKey)) return;
       this.visitedInDrag.add(cellKey);
@@ -245,10 +258,12 @@ export class HexBoard {
   // --- Rendering ---
 
   private render() {
+    this.hexSize = computeHexSize(this.n);
+
     while (this.svg.firstChild) this.svg.removeChild(this.svg.firstChild);
     this.cellElements.clear();
 
-    const { width, height } = svgSize(this.n, HEX_SIZE);
+    const { width, height } = svgSize(this.n, this.hexSize);
     this.svg.setAttribute('width', String(width));
     this.svg.setAttribute('height', String(height));
 
@@ -261,10 +276,10 @@ export class HexBoard {
   }
 
   private renderBorderBands() {
-    const size = HEX_SIZE;
+    const size = this.hexSize;
     const w = Math.sqrt(3) * size;
     const h = 2 * size;
-    const bandWidth = 8;
+    const bandWidth = Math.max(4, size * 0.35);
     const halfW = w / 2;
     const quarterH = h * 0.25;
     const ns = this.n;
@@ -327,28 +342,28 @@ export class HexBoard {
   }
 
   private renderCell(r: number, c: number) {
-    const { cx, cy } = cellCenter(r, c, HEX_SIZE);
-    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
+    const size = this.hexSize;
+    const { cx, cy } = cellCenter(r, c, size);
 
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', `hex-cell${disabled ? ' disabled' : ''}`);
+    g.setAttribute('class', 'hex-cell');
     g.setAttribute('data-row', String(r));
     g.setAttribute('data-col', String(c));
 
     const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    poly.setAttribute('points', hexVertices(cx, cy, HEX_SIZE - 1.5));
-    this.applyCellStyle(poly, this.grid[r][c], disabled);
+    poly.setAttribute('points', hexVertices(cx, cy, size - Math.max(1, size * 0.07)));
+    this.applyCellStyle(poly, this.grid[r][c]);
 
     g.appendChild(poly);
     this.svg.appendChild(g);
     this.cellElements.set(this.key(r, c), g);
   }
 
-  private applyCellStyle(poly: SVGPolygonElement, color: CellColor, disabled: boolean) {
-    const { fill, stroke, strokeDash } = cellColorFill(color, disabled);
+  private applyCellStyle(poly: SVGPolygonElement, color: CellColor) {
+    const { fill, stroke, strokeDash } = cellColorFill(color);
     poly.setAttribute('fill', fill);
     poly.setAttribute('stroke', stroke);
-    poly.setAttribute('stroke-width', '1.5');
+    poly.setAttribute('stroke-width', String(Math.max(0.8, this.hexSize * 0.07)));
     if (strokeDash) poly.setAttribute('stroke-dasharray', strokeDash);
     else poly.removeAttribute('stroke-dasharray');
   }
@@ -358,8 +373,7 @@ export class HexBoard {
     if (!g) return;
     const poly = g.querySelector('polygon') as SVGPolygonElement | null;
     if (!poly) return;
-    const disabled = isCellDisabled(r, c, this.n, this.symmetryOn);
-    this.applyCellStyle(poly, this.grid[r][c], disabled);
+    this.applyCellStyle(poly, this.grid[r][c]);
   }
 
   private updateAllCells() {
