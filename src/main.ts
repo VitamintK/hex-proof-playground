@@ -1,5 +1,5 @@
 import './style.css';
-import { HexBoard, BoardState } from './hexBoard';
+import { HexBoard, BoardState, BrushColor } from './hexBoard';
 
 const sizeInput    = document.getElementById('size-input')      as HTMLInputElement;
 const applyBtn     = document.getElementById('apply-btn')        as HTMLButtonElement;
@@ -10,6 +10,7 @@ const saveBtn      = document.getElementById('save-btn')         as HTMLButtonEl
 const loadBtn      = document.getElementById('load-btn')         as HTMLButtonElement;
 const shareBtn     = document.getElementById('share-btn')        as HTMLButtonElement;
 const fileInput    = document.getElementById('file-input')       as HTMLInputElement;
+const brushBtns    = document.querySelectorAll<HTMLButtonElement>('.brush-btn');
 const svg          = document.getElementById('hex-board')        as unknown as SVGSVGElement;
 const infoText     = document.getElementById('info-text')        as HTMLParagraphElement;
 
@@ -33,7 +34,7 @@ function updateSymmetryUI(n: number) {
 
 function applySize() {
   const raw = parseInt(sizeInput.value, 10);
-  const n = Math.max(2, Math.min(19, isNaN(raw) ? currentSize : raw));
+  const n = Math.max(2, Math.min(41, isNaN(raw) ? currentSize : raw));
   sizeInput.value = String(n);
   currentSize = n;
   const symOn = isOdd(n) && symToggle.checked;
@@ -151,6 +152,14 @@ function init() {
   });
 
   clearBtn.addEventListener('click', () => board.clear());
+
+  brushBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      brushBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      board.setBrush(btn.dataset['color'] as BrushColor);
+    });
+  });
 
   saveBtn.addEventListener('click', saveToFile);
 
