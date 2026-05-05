@@ -25,6 +25,9 @@
             <button id="brush-blue" class="brush-btn" data-color="blue" title="Blue brush">
               <span class="brush-swatch blue"></span> Blue
             </button>
+            <button id="brush-white" class="brush-btn" data-color="white" title="White brush (works on diagonal cells too)">
+              <span class="brush-swatch white"></span> White
+            </button>
           </div>
         </div>
         <div class="control-group" id="symmetry-group">
@@ -59,8 +62,12 @@
           <span>Blue (symmetric)</span>
         </div>
         <div class="legend-item">
-          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#555" stroke="#888" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
-          <span>Diagonal (locked)</span>
+          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#f0f0f0" stroke="#888888" stroke-width="1.5"/></svg>
+          <span>White (paintable on diagonals)</span>
+        </div>
+        <div class="legend-item">
+          <svg width="20" height="20"><polygon points="10,2 18,6 18,14 10,18 2,14 2,6" fill="#1e1e32" stroke="#2e2e4e" stroke-width="1.5" stroke-dasharray="3,2"/></svg>
+          <span>Diagonal (locked for red/blue)</span>
         </div>
       </div>
       <p id="info-text"></p>
