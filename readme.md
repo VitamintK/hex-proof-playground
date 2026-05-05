@@ -1,1 +1,1 @@
-
+Playground for making symmetric Hex configurations. Motivated by the quest to find an odd-sized board symmetric over both diagonals where playing in the center is *not* winning [influenced by [this stack exchange question/answer](https://cstheory.stackexchange.com/a/53011/53481)].
